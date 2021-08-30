@@ -15,7 +15,7 @@
 # M1B - GPIO 12 (pin 32 PWM 0)
 # GND - GND (any, e.g. pin 39) - they must share a common ground
 # M2A - GPIO 13 (pin 33 PWM 1)
-# M2B - GPIO 19 (pin 33 PWM 1)
+# M2B - GPIO 19 (pin 35 PWM 1)
 
 # Import modules
 import time

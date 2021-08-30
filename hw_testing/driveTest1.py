@@ -106,7 +106,7 @@ time.sleep(1)
 left=pwmMotor(leftPins[0], leftPins[1])
 right=pwmMotor(rightPins[0], rightPins[1])
 
-speed=80
+speed=50
 rt=3        # Time to run each session for
 print("Forward")
 left.setSpeed(speed)
@@ -124,7 +124,7 @@ left.stop()
 right.stop()
 time.sleep(1)
 
-print("Clockwise")
+print("Turn right")
 left.setSpeed(speed)
 right.setSpeed(speed*0.5)
 time.sleep(rt)
@@ -132,7 +132,7 @@ left.stop()
 right.stop()
 time.sleep(1)
 
-print("Anti-clockwise")
+print("Turn left")
 left.setSpeed(speed*0.5)
 right.setSpeed(speed)
 time.sleep(rt)
