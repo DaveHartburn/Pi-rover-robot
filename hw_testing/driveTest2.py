@@ -7,6 +7,7 @@ from bluedot import BlueDot
 import time
 import RPi.GPIO as GPIO
 import math
+from signal import pause
 
 # Use BCM settings, e.g. GPIO19
 GPIO.setmode(GPIO.BCM)
@@ -86,7 +87,11 @@ class pwmMotor():
                   self.pwmOn=p
               # PWM established, set value
               self.speed=sp
-              self.pwm.ChangeDutyCycle(abs(sp))
+              abssp=abs(sp)
+              if(abssp>100):
+                  abssp=100
+              self.pwm.ChangeDutyCycle(abssp)
+
       # End of speed()
 
  # End of class pwmMotor
@@ -104,15 +109,105 @@ right=pwmMotor(rightPins[0], rightPins[1])
 
 # Establish blue dot
 print("Starting bluedot connection")
-bd = BlueDot()
+bd = BlueDot(cols=2,rows=3)
+# Top row, joystick, invisible
+bd[1,0].visible=False
+# Middle row, gap
+bd[0,1].visible=False
+bd[1,1].visible=False
+# Bottom row, ACW, CW
+bd[0,2].color="red"
+bd[1,2].color="red"
+
 while True:
     if bd.is_connected:
         break
 print("Connected")
 
+def moveBot(pos):
+    bdJS.color = (255,128,0)
+    xin,yin=pos.x, pos.y
+    x=jsMap(xin)
+    y=jsMap(yin)
+    # Calculate power
+    p=int(math.sqrt(x*x + y*y))
+    # Map to left and right values
+    if(x>=0):
+        # Turning right
+        r=y
+        if(y>=0):
+            # Forward right
+            l=p # Left motor at power
+        else:
+            # Back right
+            l=-p # Left motor at negative power (reverse)
+    else:
+        # Turning left
+        l=y
+        if(y>=0):
+            # Forward left
+            r=p
+        else:
+            r=-p
+    # End of direction if
+    left.setSpeed(l)
+    right.setSpeed(r)
+    #print("Left = {}, Right = {}".format(l,r))
+
+def acwTurn(pos):
+    bdACW.color = (255,200,0)
+    d=pos.distance
+    p=jsMap(d)
+    # ACW is right forward, left bakwards
+    l=-p
+    r=p
+    left.setSpeed(l)
+    right.setSpeed(r)
+    #print("Left = {}, Right = {}".format(l,r))
+
+
+def cwTurn(pos):
+    bdCW.color = (255,200,0)
+    d=pos.distance
+    p=jsMap(d)
+    # CW is left forward, right bakwards
+    l=p
+    r=-p
+    left.setSpeed(l)
+    right.setSpeed(r)
+    #print("Left = {}, Right = {}".format(l,r))
+
+
+def stop():
+    #print("STOP!!!")
+    left.stop()
+    right.stop()
+    bdJS.color = "blue"
+    bdCW.color = "red"
+    bdACW.color = "red"
+
+# Name the components
+bdJS=bd[0,0]    # Joystick
+bdACW=bd[0,2]   # Anti-clockwise button
+bdCW=bd[1,2]    # clockwise button
+bdJS.when_pressed = moveBot
+bdJS.when_moved = moveBot
+
+bdACW.when_pressed = acwTurn
+bdACW.when_moved = acwTurn
+
+bdCW.when_pressed = cwTurn
+bdCW.when_moved = cwTurn
+
+bd.when_released = stop # All buttons stop
+
+pause()
+exit(0)
+
+
 while True:
-    if bd.is_pressed:
-        bd.color = (255, 128, 0)
+    if bd[0,0].is_pressed:
+        bd[0,0].color = (255, 128, 0)
         xin,yin=bd.position.x, bd.position.y
         x=jsMap(xin)
         y=jsMap(yin)
@@ -139,8 +234,24 @@ while True:
         # End of direction if
         left.setSpeed(l)
         right.setSpeed(r)
+        print("Moving",l)
     else:
         # Button released - stop!
         left.stop()
         right.stop()
-        bd.color = "blue"
+        bd[0,0].color = "blue"
+
+    if bd[0,1].is_pressed:
+        # Anti clockwise spin
+        bd[0,1].color = (255,200,200)
+        d=bd[0,1].position.x
+        print("Spin ACW", d)
+    else:
+        bd[0,1].color = "red"
+
+    if bd[1,1].is_pressed:
+        # Clockwise spin
+        bd[1,1].color = (255,200,200)
+        print("Spin CW", bd[1,1].position.distance)
+    else:
+        bd[1,1].color = "red"
