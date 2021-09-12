@@ -23,6 +23,7 @@ class pwmMotor():
       def __init__(self, a, b):
           self.pinA=a
           self.pinB=b
+          print(a,type(a),b,type(b))
           # Set up GPIO pins
           GPIO.setup(self.pinA, GPIO.OUT, initial=GPIO.LOW)
           GPIO.setup(self.pinB, GPIO.OUT, initial=GPIO.LOW)
@@ -204,54 +205,3 @@ bd.when_released = stop # All buttons stop
 pause()
 exit(0)
 
-
-while True:
-    if bd[0,0].is_pressed:
-        bd[0,0].color = (255, 128, 0)
-        xin,yin=bd.position.x, bd.position.y
-        x=jsMap(xin)
-        y=jsMap(yin)
-        # Calculate power
-        p=int(math.sqrt(x*x + y*y))
-        # Map to left and right values
-        if(x>=0):
-            # Turning right
-            r=y
-            if(y>=0):
-                # Forward right
-                l=p # Left motor at power
-            else:
-                # Back right
-                l=-p # Left motor at negative power (reverse)
-        else:
-            # Turning left
-            l=y
-            if(y>=0):
-                # Forward left
-                r=p
-            else:
-                r=-p
-        # End of direction if
-        left.setSpeed(l)
-        right.setSpeed(r)
-        print("Moving",l)
-    else:
-        # Button released - stop!
-        left.stop()
-        right.stop()
-        bd[0,0].color = "blue"
-
-    if bd[0,1].is_pressed:
-        # Anti clockwise spin
-        bd[0,1].color = (255,200,200)
-        d=bd[0,1].position.x
-        print("Spin ACW", d)
-    else:
-        bd[0,1].color = "red"
-
-    if bd[1,1].is_pressed:
-        # Clockwise spin
-        bd[1,1].color = (255,200,200)
-        print("Spin CW", bd[1,1].position.distance)
-    else:
-        bd[1,1].color = "red"
