@@ -4,8 +4,6 @@
 
 MJPG=/usr/local/bin/mjpg_streamer
 
-echo You said $1
-
 if [ -x $MJPG ] ; then
   case "$1" in
     start) echo Starting streamer...
