@@ -59,10 +59,10 @@ while serverRunning:
 		else:
 			print("Need one argument for fwSpeed, sent: ",message)
 	elif(cmdin=="chspeed"):
-		if(numargs>=2):
+		if(numargs>=1):
 			rdata=pirover.chSpeed(int(csvin[1]),int(csvin[2]))
 		else:
-			print("Need one argument for fwSpeed, sent: ",message)
+			print("Need two arguments for chSpeed, sent: ",message)
 	elif(cmdin=="drive"):
 		if(numargs>=1):
 			rdata=pirover.drive(int(csvin[1]),int(csvin[2]))

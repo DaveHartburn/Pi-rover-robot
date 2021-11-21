@@ -119,6 +119,8 @@ class piRover():
 		#   name="string"	Give your robot a name
 		#   left=[a,b]		List of a and b pins for left motor(s)
 		#   right=[a,b]		List of a and b pins for right motor(s)
+		#	load=1			Return load values with data
+		#	wifi=1			Return wifi RSSI and noise with data
 		
 		# Process input
 		for k,v in kwargs.items():
@@ -264,6 +266,7 @@ class piRover():
 		# Read system load and set dictionary
 		d=os.getloadavg()
 		self.rdata["load"]=d[0]
+		return d
 	
 	def readWifi(self):
 		# Returns wifi signal and noise
@@ -272,5 +275,6 @@ class piRover():
 		sp=r.split()
 		self.rdata["rssi"]=sp[3]
 		self.rdata["noise"]=sp[4]
+		return [sp[3], sp[4]]
 			
 # End of class piRover
