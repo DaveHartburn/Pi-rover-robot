@@ -11,7 +11,7 @@ from gpiozero import Servo
 from time import sleep
 import sys
 
-pin=17		# Default pin
+pin=14		# Default pin
 
 fact=False		# Default is not to use a GPIO factory
 extpulse=False	# Use standard pulse width or extended

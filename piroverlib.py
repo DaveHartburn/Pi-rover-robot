@@ -103,6 +103,14 @@ class piRover():
 	leftPins=None	# List of left motor pins
 	rightPins=None	# List of right motor pins
 	
+	# Pan tilt defaults
+	panStart=93			# Starting position
+	tiltStart=90		# Starting position
+	panMin=10			# Minimum pan angle
+	panMax=170			# Maximum pan angle
+	tiltMin=5			# Minimum tilt angle, 0 can strain motor
+	tiltMax=110			# Any lower and it hits the ultrasonic
+	
 	# Track object status as a python dictionary, which is returned after every
 	# function call. As other sensors are added, they can be added to the dictionary.
 	# We will always have a left and right motor speed.
@@ -121,6 +129,7 @@ class piRover():
 		#   right=[a,b]		List of a and b pins for right motor(s)
 		#	load=1			Return load values with data
 		#	wifi=1			Return wifi RSSI and noise with data
+		#	pantilt=[p,t]	Pan tilt camera connected to a PCA9685, which servo slots are they in
 		
 		# Process input
 		for k,v in kwargs.items():
@@ -138,6 +147,22 @@ class piRover():
 				# Monitor wifi rssi and noise
 				self.rdata["rssi"]=0
 				self.rdata["noise"]=0
+			elif(k=="pantilt"):
+				# Using the pan tilt camera, import library
+				from adafruit_servokit import ServoKit
+
+				self.srvKit = ServoKit(channels=16)
+				self.panServo=v[0]
+				self.tiltServo=v[1]
+				# Use extanded pulse width range
+				self.srvKit.servo[self.panServo].set_pulse_width_range(500,2500)
+				self.srvKit.servo[self.tiltServo].set_pulse_width_range(500,2500)
+				# Set up default angles
+				self.srvKit.servo[self.panServo].angle=self.panStart
+				self.srvKit.servo[self.tiltServo].angle=self.tiltStart
+				# Set up return data
+				self.rdata["panAngle"]=self.panStart
+				self.rdata["tiltAngle"]=self.tiltStart
 				
 				
 		print("Hello world, I am "+self.name)
@@ -276,5 +301,50 @@ class piRover():
 		self.rdata["rssi"]=sp[3]
 		self.rdata["noise"]=sp[4]
 		return [sp[3], sp[4]]
+
+	def panAngle(self, a):
+		# Sets the pan angle and returns the general data set
+		
+		# Can be called with 'mid' which resets to the default middle position
+		if(a=="mid"):
+			a=self.panStart
 			
+		# Do not exceed limits
+		if(a<self.panMin):
+			a=self.panMin
+		if(a>self.panMax):
+			a=self.panMax
+		self.srvKit.servo[self.panServo].angle=a
+		self.rdata["panAngle"]=a
+		return self.rdata
+
+	def panLeft(self, a):
+		# Pans the camera to the left (or right if a is negative)
+		newAng=self.rdata["panAngle"]+a
+		self.panAngle(newAng)
+		return self.rdata
+
+	def tiltAngle(self, a):
+		# Sets the tilt angle and returns the general data set
+		
+		# Can be called with 'mid' which resets to the default middle position
+		if(a=="mid"):
+			a=self.tiltStart
+			
+		# Do not exceed limits
+		if(a<self.tiltMin):
+			a=self.tiltMin
+		if(a>self.tiltMax):
+			a=self.tiltMax
+		self.srvKit.servo[self.tiltServo].angle=a
+		self.rdata["tiltAngle"]=a
+		return self.rdata
+
+	def tiltUp(self, a):
+		# Tilt the camera up by the angle reported
+		# Need to flip as 0 is all the way up
+		newAng=self.rdata["tiltAngle"]-a
+		self.tiltAngle(newAng)
+		return self.rdata
+		
 # End of class piRover

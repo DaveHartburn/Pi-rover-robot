@@ -21,10 +21,11 @@ socket.bind("tcp://*:5555")
 # Define pin numbers [A, B]
 leftPins=[18,12]
 rightPins=[13,19]
+pantilt=[0,1]		# Servo slots on PCA9685
 
 print("driveByQueue started")
 #pirover=piRover(left=leftPins, right=rightPins)
-pirover=piRover(left=leftPins, right=rightPins, load=1, wifi=1)
+pirover=piRover(left=leftPins, right=rightPins, load=1, wifi=1, pantilt=pantilt)
 
 serverRunning=True
 rdata={}			# Track responses
@@ -78,6 +79,32 @@ while serverRunning:
 			rdata=pirover.spin(int(csvin[1]))
 		else:
 			print("Need one argument for spin, sent: ",message)
+	elif(cmdin=="panangle"):
+		if(numargs>=1):
+			if(csvin[1]=="mid"):
+				rdata=pirover.panAngle("mid")
+			else:
+				rdata=pirover.panAngle(int(csvin[1]))
+		else:
+			print("Need one argument for panangle, self: ", message)
+	elif(cmdin=="panleft"):
+		if(numargs>=1):
+			rdata=pirover.panLeft(int(csvin[1]))
+		else:
+			print("Need one argument for panleft, self: ", message)
+	elif(cmdin=="tiltangle"):
+		if(numargs>=1):
+			if(csvin[1]=="mid"):
+				rdata=pirover.tiltAngle("mid")
+			else:
+				rdata=pirover.tiltAngle(int(csvin[1]))
+		else:
+			print("Need one argument for tiltangle, self: ", message)
+	elif(cmdin=="tiltup"):
+		if(numargs>=1):
+			rdata=pirover.tiltUp(int(csvin[1]))
+		else:
+			print("Need one argument for tiltup, self: ", message)
 	elif(cmdin=="getsens"):
 		# Return all sensor data
 		rdata=pirover.getSensorData()

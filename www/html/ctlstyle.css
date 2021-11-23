@@ -67,7 +67,23 @@ button:active, .active-class {
 #b_cw {
 	grid-column: 3;
 	grid-row: 4;
-}	
+}
+#b_tup {
+	grid-column: 1;
+	grid-row: 5;
+}
+#b_tdown {
+	grid-column: 1;
+	grid-row: 6;
+}
+#b_panl {
+	grid-column: 2;
+	grid-row: 6;
+}
+#b_panr {
+	grid-column: 3;
+	grid-row: 6;
+}
 
 #streamer {
 	float: right;

@@ -35,6 +35,14 @@ if "msg" in args:
 		cmd="spin,40"
 	elif(msg=="getsens"):
 		cmd="getsens"
+	elif(msg=="tup"):
+		cmd="tiltUp,5"
+	elif(msg=="tdown"):
+		cmd="tiltUp,-5"
+	elif(msg=="panl"):
+		cmd="panLeft,10"
+	elif(msg=="panr"):
+		cmd="panLeft,-10"
 	else:
 		cmd="null"
 
