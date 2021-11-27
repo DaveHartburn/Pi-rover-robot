@@ -92,6 +92,8 @@ while serverRunning:
 			rdata=pirover.panLeft(int(csvin[1]))
 		else:
 			print("Need one argument for panleft, self: ", message)
+	elif(cmdin=="pancentre"):
+		rdata=pirover.panCentre()
 	elif(cmdin=="tiltangle"):
 		if(numargs>=1):
 			if(csvin[1]=="mid"):

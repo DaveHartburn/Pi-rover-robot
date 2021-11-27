@@ -10,6 +10,7 @@ window.addEventListener("keyup", keypress);
 
 function keypress(e) {
 	//console.log("Keypress...."+e.code);
+	console.log("Key="+e.key)
 	switch(e.key) {
 		case 'w': clickButton('b_up', e.type); break;
 		case 's': clickButton('b_down', e.type); break;
@@ -18,6 +19,11 @@ function keypress(e) {
 		case 'z': clickButton('b_stop', e.type); break;
 		case 'q': clickButton('b_acw', e.type); break;
 		case 'e': clickButton('b_cw', e.type); break;
+		case 'i': clickButton('b_tup', e.type); break;
+		case 'k': clickButton('b_tdown', e.type); break;
+		case 'j': clickButton('b_panl', e.type); break;
+		case 'l': clickButton('b_panr', e.type); break;
+		case ' ': clickButton('b_pcent', e.type); break;
 	}	
 }
 

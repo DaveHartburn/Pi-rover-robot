@@ -324,6 +324,12 @@ class piRover():
 		self.panAngle(newAng)
 		return self.rdata
 
+	def panCentre(self):
+		# Centres the pan and the tilt
+		self.panAngle(self.panStart)
+		self.tiltAngle(self.tiltStart)
+		return self.rdata
+		
 	def tiltAngle(self, a):
 		# Sets the tilt angle and returns the general data set
 		

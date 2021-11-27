@@ -69,15 +69,19 @@ button:active, .active-class {
 	grid-row: 4;
 }
 #b_tup {
-	grid-column: 1;
+	grid-column: 2;
 	grid-row: 5;
 }
-#b_tdown {
-	grid-column: 1;
+#b_pcent {
+	grid-column: 2;
 	grid-row: 6;
 }
-#b_panl {
+#b_tdown {
 	grid-column: 2;
+	grid-row: 7;
+}
+#b_panl {
+	grid-column: 1;
 	grid-row: 6;
 }
 #b_panr {

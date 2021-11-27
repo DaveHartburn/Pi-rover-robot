@@ -24,9 +24,9 @@ if "msg" in args:
 	elif(msg=="down"):
 		cmd="chSpeed,-10,-10"
 	elif(msg=="left"):
-		cmd="chSpeed,0,10"
+		cmd="chSpeed,-5,5"
 	elif(msg=="right"):
-		cmd="chSpeed,10,0"
+		cmd="chSpeed,5,-5"
 	elif(msg=="stop"):
 		cmd="stop"
 	elif(msg=="acw"):
@@ -43,6 +43,8 @@ if "msg" in args:
 		cmd="panLeft,10"
 	elif(msg=="panr"):
 		cmd="panLeft,-10"
+	elif(msg=="pcent"):
+		cmd="panCentre"
 	else:
 		cmd="null"
 
