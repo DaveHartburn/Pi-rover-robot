@@ -22,6 +22,7 @@ The heart of most Python scripts is piroverlib.py. This contains two classes, pi
 |  *	load=1		|	Return load values with data |
 |  *	wifi=1		|	Return wifi RSSI and noise with data |
 |  * pantilt=[p,t] |	Pan tilt camera connected to a PCA9685, which servo slots are they in |
+|  * sonics=[[t,e],[t,e]] | Define HC-SR04 ultrasonic sensors in pairs of trigger, echo |
 | stop() | Instantly stops both motors |
 | fwFull(sp) | Sets both motors to full speed. sp positive for forward, sp negative for backwards. Zero will perform a stop |
 | fwSpeed(sp) | Sets both motors to the speed sp |
@@ -32,6 +33,7 @@ The heart of most Python scripts is piroverlib.py. This contains two classes, pi
 | getSensorData() | Returns data from all defined sensors |
 | readLoad() | Returns only the current load |
 | readWifi() | Returns wifi signal and noise levels as a list/tuple |
+| getSonic(n) | Returns the ultrasonic distance value for a specific sensor or all if n is negative/missing |
 | panAngle(a) | Sets the pan angle to a |
 | panLeft(a) | Pans the camera to the left (or right if a is negative) |
 | panCentre(a) | Sets the camera pan and tilt to centre (default positions) |
@@ -71,6 +73,7 @@ e.g. "`chspeed,10,-10`" will increase the left motor by 10% while decreasing the
 | tiltAngle | a | Sets the tilt angle to a |
 | tiltUp | a | Tilts the camera up by angle a (down if a is negative) |
 | getsens |	None	| Return all sensor data |
+| getsonic | [n]    | Get only the ultrasonic sensors with key sonicDist. Option to supply specific sensor number |
 | quit	| None	| Quit the server |
 
 ## To Do

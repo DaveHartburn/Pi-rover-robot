@@ -27,7 +27,6 @@ if(len(sys.argv)==2):
 			print("This should not happen!")
 	except:
 		# No
-		print("No colon")
 		qhost="tcp://"+uin+":"+defport
 
 	

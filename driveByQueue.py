@@ -22,10 +22,12 @@ socket.bind("tcp://*:5555")
 leftPins=[18,12]
 rightPins=[13,19]
 pantilt=[0,1]		# Servo slots on PCA9685
+# Ultrasonic pins (GPIO numbers) are a list of pairs for each sensor, trigger & echo
+sonicPins=[ [4,17], [14,15] ]
 
 print("driveByQueue started")
 #pirover=piRover(left=leftPins, right=rightPins)
-pirover=piRover(left=leftPins, right=rightPins, load=1, wifi=1, pantilt=pantilt)
+pirover=piRover(left=leftPins, right=rightPins, pantilt=pantilt, sonics=sonicPins)
 
 serverRunning=True
 rdata={}			# Track responses
@@ -110,6 +112,14 @@ while serverRunning:
 	elif(cmdin=="getsens"):
 		# Return all sensor data
 		rdata=pirover.getSensorData()
+	elif(cmdin=="getsonic"):
+		# Just get sonic data, may be just one sensor
+		if(numargs>=1):
+			rdata["sonicDist"]=pirover.getSonic(int(csvin[1]))
+		else:
+			# No argument, get all ultrasonic sensors
+			rdata["sonicDist"]=pirover.getSonic()
+			
 	elif(message=="quit"):
 		serverRunning=False
 		rdata["msg"]="Quit"

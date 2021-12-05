@@ -5,6 +5,7 @@
 import RPi.GPIO as GPIO
 import math
 import os
+import time
 
 # Use BCM settings, e.g. GPIO19
 GPIO.setmode(GPIO.BCM)
@@ -102,6 +103,7 @@ class piRover():
 	right=None	# Right motor object
 	leftPins=None	# List of left motor pins
 	rightPins=None	# List of right motor pins
+	sonics=None		# List of ultra sonic sensor pins as a tuple [trig, echo]
 	
 	# Pan tilt defaults
 	panStart=93			# Starting position
@@ -163,7 +165,11 @@ class piRover():
 				# Set up return data
 				self.rdata["panAngle"]=self.panStart
 				self.rdata["tiltAngle"]=self.tiltStart
-				
+			elif(k=="sonics"):
+				self.sonics=v
+				# Set up return data
+				self.rdata["sonicDist"]=[]
+		# End of argument processing / setup		
 				
 		print("Hello world, I am "+self.name)
 		# Sanity check
@@ -178,6 +184,15 @@ class piRover():
 		else:
 			# Init right motor
 			self.right=pwmMotor(self.rightPins[0], self.rightPins[1])
+			
+		# Initialise ultrasonic sensors (HC-SR04s)
+		if(self.sonics!=None):
+			# Ultrasonic sensors have been defined, initialise
+			for son in self.sonics:
+				GPIO.setup(son[0], GPIO.OUT)
+				GPIO.setup(son[1], GPIO.IN)
+				self.rdata["sonicDist"].append(0)
+			
 	# End of init
 	
 	def stop(self):
@@ -283,6 +298,8 @@ class piRover():
 				self.readLoad()
 			if(key=="rssi"):
 				self.readWifi()
+			if(key=="sonicDist"):
+				self.getSonic()
 			
 		return self.rdata
 	# End of getSensorData
@@ -302,6 +319,55 @@ class piRover():
 		self.rdata["noise"]=sp[4]
 		return [sp[3], sp[4]]
 
+	def getSonic(self, n=-1):
+		# Return the value of an ultrasonic sensor or all if n is negative
+
+		rtnList=[]		# Define list for returned data
+		if(n<0):
+			checkList=self.sonics
+		else:
+			checkList=[self.sonics[n]]
+			
+		for son in checkList:
+			# Check the sensor
+			maxTime=5	# Bomb out if no response before maxTime.
+						# Prevents hanging on fault
+				
+			tr=son[0]
+			ec=son[1]
+			# Set trigger to high
+			GPIO.output(tr, True)
+			time.sleep(0.00001)
+			GPIO.output(tr, False)
+			
+			callTime=time.time()	# Record time procedure called
+			errTime=callTime+5
+			startTime=callTime		# Set a default time, can sometimes think
+			stopTime=callTime		# variables have not been set
+			
+			# Save start time
+			while (GPIO.input(ec)==0 and time.time()<errTime):
+				startTime=time.time()
+				
+			# Save echo time
+			while (GPIO.input(ec)==1 and time.time()<errTime):
+				stopTime=time.time()
+				
+			if(time.time()>errTime):
+				dist=-1
+			else:	
+				elTime=stopTime-startTime			
+				dist=round(elTime*17150,2)
+			
+			# Add distance value to list to be returned
+			rtnList.append(dist)
+		# End of checking sonic loop
+		
+		# Set the global data
+		self.rdata["sonicDist"]=rtnList
+		return rtnList
+						
+		
 	def panAngle(self, a):
 		# Sets the pan angle and returns the general data set
 		
