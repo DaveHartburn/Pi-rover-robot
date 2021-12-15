@@ -29,7 +29,7 @@ if(len(sys.argv)==2):
 		# No
 		qhost="tcp://"+uin+":"+defport
 
-	
+
 # Connect to server
 print("Connecting to "+qhost)
 socket = context.socket(zmq.REQ)
@@ -74,11 +74,11 @@ while clientRunning:
 	else:
 		byin = bytes(uin, 'utf-8')
 		socket.send(byin)
-			
+
 		# Wait for response
 		rdataJson=socket.recv().decode('utf-8')
 		print("Returned data:", rdataJson)
-		
+
 		# Quit if we sent quit
 		if(uin=="quit"):
 			clientRunning=False
