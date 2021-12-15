@@ -76,6 +76,33 @@ e.g. "`chspeed,10,-10`" will increase the left motor by 10% while decreasing the
 | getsonic | [n]    | Get only the ultrasonic sensors with key sonicDist. Option to supply specific sensor number |
 | quit	| None	| Quit the server |
 
+## GPIO Wiring ##
+
+Direct GPIO connections
+ 
+| Pin# | Value | Connection| Pin# | Value | Connection |
+| - | - | - | - | - | - |
+| 1 | 3V3 | Breadboard 3.3v | 2 | 5V | Breadboard 5v |
+| 3 | GPIO2 (SDA1, I2C) | PCA9685 | 4 | 5V | - |
+| 5 | GPIO3 (SCL1, I2C) | PCA9685 | 6 | GND | Breadboard GND |
+| 7 | GPIO4 | Front US trig | 8 | GPIO14 | Rear US trig |
+| 9 | GND | - | 10 | GPIO15 | Rear US echo |
+| 11 | GPIO17 | Front US echo | 12 | GPIO18 | MDD3A M1A |
+| 13 | GPIO27 | - | 14 | GND | - |
+| 15 | GPIO22 | - | 16 | GPIO23 | - |
+| 17 | 3V3 | - | 18 | GPIO24 | - |
+| 19 | GPIO10 | - | 20 | GND | - |
+| 21 | GPIO9 | - | 22 | GPIO25 | - |
+| 23 | GPIO11 | - | 24 | GPIO8 | - |
+| 25 | GND | - | 26 | GPIO7 | - |
+| 27 | GPIO0 | - | 28 | GPIO1 | - |
+| 29 | GPIO5 | - | 30 | GND | - |
+| 31 | GPIO6 | - | 32 | GPIO12 | MDD3A M1B |
+| 33 | GPIO19 | MDD3A M2A | 34 | GND | - |
+| 35 | GPIO19 | MDD3A M2B | 36 | GPIO16 | - |
+| 37 | GPIO26 | - | 38 | GPIO20 | - |
+| 39 | GND | - | 40 | GPIO21 | - |
+ 
 ## To Do
 
 
