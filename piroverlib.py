@@ -104,9 +104,10 @@ class piRover():
 	leftPins=None	# List of left motor pins
 	rightPins=None	# List of right motor pins
 	sonics=None		# List of ultra sonic sensor pins as a tuple [trig, echo]
+	buttonPin=None	# Pin for a push button
 	
 	# Pan tilt defaults
-	panStart=93			# Starting position
+	panStart=83			# Starting position (may not be 100% square)
 	tiltStart=90		# Starting position
 	panMin=10			# Minimum pan angle
 	panMax=170			# Maximum pan angle
@@ -169,6 +170,10 @@ class piRover():
 				self.sonics=v
 				# Set up return data
 				self.rdata["sonicDist"]=[]
+			elif(k=="button"):
+				self.buttonPin=v
+				# Set up button pin will internal pull up resistor
+				GPIO.setup(self.buttonPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 		# End of argument processing / setup		
 				
 		print("Hello world, I am "+self.name)
@@ -319,8 +324,12 @@ class piRover():
 		self.rdata["noise"]=sp[4]
 		return [sp[3], sp[4]]
 
-	def getSonic(self, n=-1):
+	def getSonic(self, n=-1, count=1, verbose=False):
 		# Return the value of an ultrasonic sensor or all if n is negative
+		# Can optionally supply a count for how many times to check, and return an average
+		# Set verbose to true for additional output debugging and to spot outliers.
+		
+		tbc=0.15		# Time between multiple checks
 
 		rtnList=[]		# Define list for returned data
 		if(n<0):
@@ -335,32 +344,50 @@ class piRover():
 				
 			tr=son[0]
 			ec=son[1]
-			# Set trigger to high
-			GPIO.output(tr, True)
-			time.sleep(0.00001)
-			GPIO.output(tr, False)
 			
-			callTime=time.time()	# Record time procedure called
-			errTime=callTime+5
-			startTime=callTime		# Set a default time, can sometimes think
-			stopTime=callTime		# variables have not been set
-			
-			# Save start time
-			while (GPIO.input(ec)==0 and time.time()<errTime):
-				startTime=time.time()
+			resultList=[]
+			for c in range(count):
+				# Set trigger to high
+				if(verbose):
+					print("Checking sensor {}, attempt {}".format(son, c))
+					
+				GPIO.output(tr, True)
+				time.sleep(0.00001)
+				GPIO.output(tr, False)
 				
-			# Save echo time
-			while (GPIO.input(ec)==1 and time.time()<errTime):
-				stopTime=time.time()
+				callTime=time.time()	# Record time procedure called
+				errTime=callTime+5
+				startTime=callTime		# Set a default time, can sometimes think
+				stopTime=callTime		# variables have not been set
 				
-			if(time.time()>errTime):
-				dist=-1
-			else:	
-				elTime=stopTime-startTime			
-				dist=round(elTime*17150,2)
+				# Save start time
+				while (GPIO.input(ec)==0 and time.time()<errTime):
+					startTime=time.time()
+					
+				# Save echo time
+				while (GPIO.input(ec)==1 and time.time()<errTime):
+					stopTime=time.time()
+					
+				if(time.time()>errTime):
+					dist=-1
+				else:	
+					elTime=stopTime-startTime			
+					dist=round(elTime*17150,2)
+					
+				if(verbose):
+					print("  Distance returned = ", dist)
+				resultList.append(dist)
+			# End of sensor check loop
+			if(verbose):
+				print("Results = ", resultList)
+				
+			# Calculate average
+			av=sum(resultList)/len(resultList)
+			if(verbose):
+				print("Average = ", av)
 			
 			# Add distance value to list to be returned
-			rtnList.append(dist)
+			rtnList.append(av)
 		# End of checking sonic loop
 		
 		# Set the global data
@@ -419,4 +446,7 @@ class piRover():
 		self.tiltAngle(newAng)
 		return self.rdata
 		
+	def getButton(self):
+		# Return the state of the push button
+		return GPIO.input(self.buttonPin)
 # End of class piRover

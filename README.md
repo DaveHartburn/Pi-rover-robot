@@ -23,6 +23,7 @@ The heart of most Python scripts is piroverlib.py. This contains two classes, pi
 |  *	wifi=1		|	Return wifi RSSI and noise with data |
 |  * pantilt=[p,t] |	Pan tilt camera connected to a PCA9685, which servo slots are they in |
 |  * sonics=[[t,e],[t,e]] | Define HC-SR04 ultrasonic sensors in pairs of trigger, echo |
+|  * button=p       | Defines a pushbutton attached to pin p |
 | stop() | Instantly stops both motors |
 | fwFull(sp) | Sets both motors to full speed. sp positive for forward, sp negative for backwards. Zero will perform a stop |
 | fwSpeed(sp) | Sets both motors to the speed sp |
@@ -39,6 +40,7 @@ The heart of most Python scripts is piroverlib.py. This contains two classes, pi
 | panCentre(a) | Sets the camera pan and tilt to centre (default positions) |
 | tiltAngle(a) | Sets the tilt angle to a |
 | tiltUp(a) | Tilts the camera up by angle a (down if a is negative) |
+| getButton() | Returns the state of the pushbutton (0=pressed)
 
 ### pwmMotor class
 
@@ -88,7 +90,7 @@ Direct GPIO connections
 | 7 | GPIO4 | Front US trig | 8 | GPIO14 | Rear US trig |
 | 9 | GND | - | 10 | GPIO15 | Rear US echo |
 | 11 | GPIO17 | Front US echo | 12 | GPIO18 | MDD3A M1A |
-| 13 | GPIO27 | - | 14 | GND | - |
+| 13 | GPIO27 | Pushbutton | 14 | GND | - |
 | 15 | GPIO22 | - | 16 | GPIO23 | - |
 | 17 | 3V3 | - | 18 | GPIO24 | - |
 | 19 | GPIO10 | - | 20 | GND | - |
