@@ -104,6 +104,31 @@ Direct GPIO connections
 | 35 | GPIO19 | MDD3A M2B | 36 | GPIO16 | - |
 | 37 | GPIO26 | - | 38 | GPIO20 | - |
 | 39 | GND | - | 40 | GPIO21 | - |
+
+## Pi Pico Wiring ##
+
+ | Pin# | Value | Connection | Pin# | Value | Connection |
+ | - | - | - | - | - | - |
+ | 1 | GP0 (UART0 Tx) | Pi Serial Rx (GPIO 15) | 40 | VBUS | - |
+ | 2 | GP1 (UART0 Rx) | Pi Serial Tx (GPIO 14) | 39 | VSYS | - |
+ | 3 | GND | Breadboard GND | 38 | GND | - |
+ | 4 | GP2 | Servo 0, lower pan/tilt | 37 | 3v3_EN | - |
+ | 5 | GP3 | Servo 1, upper pan/tilt | 36 | 3V3(OUT) | - |
+ | 6 | GP4 | - | 35 | ADC_VREF | - |
+ | 7 | GP5 | - | 34 | GP28 | - |
+ | 8 | GND | - | 33 | GND | - |
+ | 9 | GP6 | - | 32 | GP27 | - |
+ | 10 | GP7 | - | 31 | GP26 | - |
+ | 11 | GP8 | - | 30 | RUN | Pushbutton to GND |
+ | 12 | GP9 | - | 29 | GP22 | - |
+ | 13 | GND | - | 28 | GND | - |
+ | 14 | GP10 | - | 27 | GP21 | - |
+ | 15 | GP11 | - | 26 | GP20 | - |
+ | 16 | GP12 | - | 25 | GP19 | - |
+ | 17 | GP13 | - | 24 | GP18 | - |
+ | 18 | GND | - | 23 | GND | - |
+ | 19 | GP14 | - | 22 | GP17 (I2C0 SCL) | - |
+ | 20 | GP15 | - | 21 | GP16 (I2C0 SDA) | - |
  
 ## To Do
 
