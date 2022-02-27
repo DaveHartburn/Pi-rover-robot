@@ -27,7 +27,7 @@ sonicPins=[ [4,17], [14,15] ]
 
 print("driveByQueue started")
 #pirover=piRover(left=leftPins, right=rightPins)
-pirover=piRover(left=leftPins, right=rightPins, pantilt=pantilt, sonics=sonicPins)
+pirover=piRover(left=leftPins, right=rightPins, pico=True)
 
 serverRunning=True
 rdata={}			# Track responses
@@ -46,10 +46,13 @@ while serverRunning:
 	cmdin=csvin[0].lower()
 	numargs=len(csvin)-1		# Number of arguments supplied
 	
-	# Remove the message key
-	rdata.pop("msg", None)
+	# Blank the internal message 
+	#rdata["msg"]=""
 	
-	if(cmdin=="stop"):
+	if(cmdin=="getdata"):
+		# Get the latest data from the library
+		rdata=pirover.getdata()
+	elif(cmdin=="stop"):
 		rdata=pirover.stop()
 	elif(cmdin=="fwfull"):
 		if(numargs>=1):
@@ -94,8 +97,6 @@ while serverRunning:
 			rdata=pirover.panLeft(int(csvin[1]))
 		else:
 			print("Need one argument for panleft, self: ", message)
-	elif(cmdin=="pancentre"):
-		rdata=pirover.panCentre()
 	elif(cmdin=="tiltangle"):
 		if(numargs>=1):
 			if(csvin[1]=="mid"):
@@ -119,9 +120,32 @@ while serverRunning:
 		else:
 			# No argument, get all ultrasonic sensors
 			rdata["sonicDist"]=pirover.getSonic()
-			
+	elif(cmdin=="sendpico"):
+		# Send a command to the pico
+		# Collapse the CSV, removing the command off the front first
+		csvin.pop(0)
+		str=",".join(csvin)
+		pirover.sendToPico(str)
+	elif(cmdin=="checkserial"):
+		# Return true or false if there is data in the queue
+		# Use for testing, thread should check regularly
+		print("Checking the serial buffer")
+		s=pirover.checkSerial()
+		print(s)
+	elif(cmdin=="getpico"):
+		# Gets data from the pico
+		# Use for testing, thread should check regularly
+		d=pirover.getFromPico()
+		print(d)
+	elif(cmdin=="activate"):
+		# Activate the pico loop and serial receive thread
+		pirover.picoActivate()
+	elif(cmdin=="deactivate"):
+		pirover.picoDeactivate()
 	elif(message=="quit"):
 		serverRunning=False
+		# Also shutdown pico
+		pirover.picoDeactivate()
 		rdata["msg"]="Quit"
 	else:
 		print("Unknown command "+csvin[0])

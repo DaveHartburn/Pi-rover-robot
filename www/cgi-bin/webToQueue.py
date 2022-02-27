@@ -44,7 +44,7 @@ if "msg" in args:
 	elif(msg=="panr"):
 		cmd="panLeft,-10"
 	elif(msg=="pcent"):
-		cmd="panCentre"
+		cmd="panangle,mid"
 	else:
 		cmd="null"
 

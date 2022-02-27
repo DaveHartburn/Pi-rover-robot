@@ -6,6 +6,9 @@ import RPi.GPIO as GPIO
 import math
 import os
 import time
+import serial
+from threading import Thread
+import json
 
 # Use BCM settings, e.g. GPIO19
 GPIO.setmode(GPIO.BCM)
@@ -103,17 +106,13 @@ class piRover():
 	right=None	# Right motor object
 	leftPins=None	# List of left motor pins
 	rightPins=None	# List of right motor pins
-	sonics=None		# List of ultra sonic sensor pins as a tuple [trig, echo]
+
 	buttonPin=None	# Pin for a push button
-	
-	# Pan tilt defaults
-	panStart=83			# Starting position (may not be 100% square)
-	tiltStart=90		# Starting position
-	panMin=10			# Minimum pan angle
-	panMax=170			# Maximum pan angle
-	tiltMin=5			# Minimum tilt angle, 0 can strain motor
-	tiltMax=110			# Any lower and it hits the ultrasonic
-	
+	picoSlave=False	# True or false if you have a Pi Pico as a slave device
+	sport=None		# Set as serial port device
+	picoTimeout=3000	# Timeout serial comms after 3 seconds
+	activated=False	# False if pico slave is not activated
+		
 	# Track object status as a python dictionary, which is returned after every
 	# function call. As other sensors are added, they can be added to the dictionary.
 	# We will always have a left and right motor speed.
@@ -150,30 +149,19 @@ class piRover():
 				# Monitor wifi rssi and noise
 				self.rdata["rssi"]=0
 				self.rdata["noise"]=0
-			elif(k=="pantilt"):
-				# Using the pan tilt camera, import library
-				from adafruit_servokit import ServoKit
-
-				self.srvKit = ServoKit(channels=16)
-				self.panServo=v[0]
-				self.tiltServo=v[1]
-				# Use extanded pulse width range
-				self.srvKit.servo[self.panServo].set_pulse_width_range(500,2500)
-				self.srvKit.servo[self.tiltServo].set_pulse_width_range(500,2500)
-				# Set up default angles
-				self.srvKit.servo[self.panServo].angle=self.panStart
-				self.srvKit.servo[self.tiltServo].angle=self.tiltStart
-				# Set up return data
-				self.rdata["panAngle"]=self.panStart
-				self.rdata["tiltAngle"]=self.tiltStart
-			elif(k=="sonics"):
-				self.sonics=v
-				# Set up return data
-				self.rdata["sonicDist"]=[]
 			elif(k=="button"):
 				self.buttonPin=v
 				# Set up button pin will internal pull up resistor
 				GPIO.setup(self.buttonPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+			elif(k=="pico"):
+				# We have a pico slave. Encode other hardware directly onto it.
+				# Dynamic via this library is far too complicated!
+				self.picoSlave=True
+				# Init serial point
+				#print("Init serial port")
+				self.sport = serial.Serial("/dev/ttyS0", 115200)
+				#print(self.sport)
+				
 		# End of argument processing / setup		
 				
 		print("Hello world, I am "+self.name)
@@ -190,16 +178,10 @@ class piRover():
 			# Init right motor
 			self.right=pwmMotor(self.rightPins[0], self.rightPins[1])
 			
-		# Initialise ultrasonic sensors (HC-SR04s)
-		if(self.sonics!=None):
-			# Ultrasonic sensors have been defined, initialise
-			for son in self.sonics:
-				GPIO.setup(son[0], GPIO.OUT)
-				GPIO.setup(son[1], GPIO.IN)
-				self.rdata["sonicDist"].append(0)
-			
-	# End of init
-	
+	def getdata(self):
+		# Return the data array
+		return self.rdata
+		
 	def stop(self):
 		# Stop both motors
 		self.left.stop()
@@ -294,17 +276,15 @@ class piRover():
 		elif(z<-100):
 			z=-100
 		return z
-		
+			
 	# Sensor functions
 	def getSensorData(self):
-		# Get data from all defined sensors
+		# Get data from all local defined sensors (not Pico)
 		for key in self.rdata:
 			if(key=="load"):
 				self.readLoad()
 			if(key=="rssi"):
 				self.readWifi()
-			if(key=="sonicDist"):
-				self.getSonic()
 			
 		return self.rdata
 	# End of getSensorData
@@ -324,129 +304,134 @@ class piRover():
 		self.rdata["noise"]=sp[4]
 		return [sp[3], sp[4]]
 
-	def getSonic(self, n=-1, count=1, verbose=False):
-		# Return the value of an ultrasonic sensor or all if n is negative
-		# Can optionally supply a count for how many times to check, and return an average
-		# Set verbose to true for additional output debugging and to spot outliers.
-		
-		tbc=0.15		# Time between multiple checks
-
-		rtnList=[]		# Define list for returned data
-		if(n<0):
-			checkList=self.sonics
-		else:
-			checkList=[self.sonics[n]]
-			
-		for son in checkList:
-			# Check the sensor
-			maxTime=5	# Bomb out if no response before maxTime.
-						# Prevents hanging on fault
-				
-			tr=son[0]
-			ec=son[1]
-			
-			resultList=[]
-			for c in range(count):
-				# Set trigger to high
-				if(verbose):
-					print("Checking sensor {}, attempt {}".format(son, c))
-					
-				GPIO.output(tr, True)
-				time.sleep(0.00001)
-				GPIO.output(tr, False)
-				
-				callTime=time.time()	# Record time procedure called
-				errTime=callTime+5
-				startTime=callTime		# Set a default time, can sometimes think
-				stopTime=callTime		# variables have not been set
-				
-				# Save start time
-				while (GPIO.input(ec)==0 and time.time()<errTime):
-					startTime=time.time()
-					
-				# Save echo time
-				while (GPIO.input(ec)==1 and time.time()<errTime):
-					stopTime=time.time()
-					
-				if(time.time()>errTime):
-					dist=-1
-				else:	
-					elTime=stopTime-startTime			
-					dist=round(elTime*17150,2)
-					
-				if(verbose):
-					print("  Distance returned = ", dist)
-				resultList.append(dist)
-			# End of sensor check loop
-			if(verbose):
-				print("Results = ", resultList)
-				
-			# Calculate average
-			av=sum(resultList)/len(resultList)
-			if(verbose):
-				print("Average = ", av)
-			
-			# Add distance value to list to be returned
-			rtnList.append(av)
-		# End of checking sonic loop
-		
-		# Set the global data
-		self.rdata["sonicDist"]=rtnList
-		return rtnList
-						
-		
-	def panAngle(self, a):
-		# Sets the pan angle and returns the general data set
-		
-		# Can be called with 'mid' which resets to the default middle position
-		if(a=="mid"):
-			a=self.panStart
-			
-		# Do not exceed limits
-		if(a<self.panMin):
-			a=self.panMin
-		if(a>self.panMax):
-			a=self.panMax
-		self.srvKit.servo[self.panServo].angle=a
-		self.rdata["panAngle"]=a
-		return self.rdata
-
-	def panLeft(self, a):
-		# Pans the camera to the left (or right if a is negative)
-		newAng=self.rdata["panAngle"]+a
-		self.panAngle(newAng)
-		return self.rdata
-
-	def panCentre(self):
-		# Centres the pan and the tilt
-		self.panAngle(self.panStart)
-		self.tiltAngle(self.tiltStart)
-		return self.rdata
-		
-	def tiltAngle(self, a):
-		# Sets the tilt angle and returns the general data set
-		
-		# Can be called with 'mid' which resets to the default middle position
-		if(a=="mid"):
-			a=self.tiltStart
-			
-		# Do not exceed limits
-		if(a<self.tiltMin):
-			a=self.tiltMin
-		if(a>self.tiltMax):
-			a=self.tiltMax
-		self.srvKit.servo[self.tiltServo].angle=a
-		self.rdata["tiltAngle"]=a
-		return self.rdata
-
-	def tiltUp(self, a):
-		# Tilt the camera up by the angle reported
-		# Need to flip as 0 is all the way up
-		newAng=self.rdata["tiltAngle"]-a
-		self.tiltAngle(newAng)
-		return self.rdata
 		
 	def getButton(self):
 		# Return the state of the push button
 		return GPIO.input(self.buttonPin)
+		
+	# Serial functions
+	def sendToPico(self, msg):
+		# Send over serial port to pico
+		data=msg.encode('UTF-8')
+		self.sport.write(data)
+		
+	def checkSerial(self):
+		# Check if there is data in the serial queue
+		if(self.sport.in_waiting>0):
+			return True
+		else:
+			return False
+		
+	def getFromPico(self):
+		# Receive from pico or timeout
+		sport=self.sport
+		timeoutTime=time.time()+self.picoTimeout
+		if(sport.in_waiting>0):
+			rawIn = bytearray()
+			dataIn = ""
+			while (sport.in_waiting > 0 and time.time()<timeoutTime):
+				# Read until we get a line ending
+				rawIn += sport.read_until()
+			
+				# Raw data is a byte stream, convert
+				# Need to use a try/except as control characters may cause an issue
+				try:
+					dataIn = rawIn.decode('utf-8').strip()
+					#print("  Incoming :", dataIn)
+				except:
+					print("Unable to decode")
+					print(rawIn)
+					return ""
+			return dataIn
+
+		else:
+			# Queue was empty, return empty string
+			return ""
+	# End of getFromPico
+		
+	def picoRthread(self):
+		# Pico receive thread. Will sit in a loop waiting for serial data from the Pico
+		# Then add it to the main data array
+		# Also sends activate to the Pico to start it's loop
+		self.activated=True
+		
+		# Start pico loop
+		self.sendToPico("activate")
+		
+		# Set to activated 
+		while self.activated:
+			# Check for serial input
+			if(self.sport.in_waiting>0):
+				dataIn = self.getFromPico()
+				#print("** Got data **")
+				#print(dataIn)
+				if(dataIn!=""):					
+					# dataIn is a string, convert to JSON
+					# May be garbage
+					try:
+						jsonIn = json.loads(dataIn)
+						#print(jsonIn)
+						# Add timestamp
+						jsonIn["timestamp"]=time.time()
+						self.rdata["pico"]=jsonIn
+						print("Whole JSON structure");
+						print(self.rdata)
+						print("Left speed", self.rdata["leftSpeed"]);
+						print("Pico ", self.rdata["pico"]);
+						print("Pico timestamp", self.rdata["pico"]["timestamp"]);
+					except:
+						print("Error decoding JSON");
+					
+			time.sleep(0.05)
+			
+		print("picoRthread ended")		
+	# End of picoRthread
+
+	def picoActivate(self):
+		# Starts the picoRthread
+		print("Activating pico and starting thread")
+		picoThread = Thread(target=self.picoRthread)
+		picoThread.daemon = True
+		picoThread.start()
+		
+	def picoDeactivate(self):
+		# Sends deactivate to the pico and stops the thread by setting activated to false
+		self.activated=False
+		# Don't try to deactivate if no pico slave. Do not give error message as this may be called from driveByQueue
+		# and have no pico defined
+		if(self.picoSlave):
+			self.sendToPico("deactivate")
+
+	def picoCmd(self,cmd,arg):
+		# Sends a pico command with a single argument
+		cmdOut="{},{}".format(cmd,arg)
+		self.sendToPico(cmdOut)
+		
+	# Pan/tilt functions
+	def panAngle(self, a):
+		# Sets the pan angle
+		if(a=="mid"):
+			angle=90
+		else:
+			angle=a
+		self.picoCmd("panangle",angle)
+		return self.rdata
+		
+	def panLeft(self, a):
+		self.picoCmd("panleft",a)
+		return self.rdata
+		
+	def tiltAngle(self, a):
+		# Sets the tilt angle
+		if(a=="mid"):
+			angle=90
+		else:
+			angle=a
+		self.picoCmd("tiltangle",angle)
+		return self.rdata
+		
+	def tiltUp(self, a):
+		self.picoCmd("tiltup",a)
+		return self.rdata
+		
 # End of class piRover

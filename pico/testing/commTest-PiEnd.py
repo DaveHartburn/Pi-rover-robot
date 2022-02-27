@@ -20,7 +20,7 @@ while True:
 	if(sport.in_waiting > 0):
 		rawIn = bytearray()
 		while (sport.in_waiting > 0):
-			# Read until will read until we get a line ending
+			# Read until we get a line ending
 			rawIn += sport.read_until()
 			print('.',end='')
 		print("")

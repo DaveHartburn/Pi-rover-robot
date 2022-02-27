@@ -91,14 +91,19 @@ function popDataout(d) {
 	delm=document.getElementById("dataout");
 	
 	data=JSON.parse(d)
-	output="<table id='datatable'>";
+	
+	/*output="<table id='datatable'>";
 	// Take any returned data and put it in a table. Don't worry about
 	// what the data is
 	for(var key in data){
 		output+="<tr><td class='key'>"+key+"</td><td class='value'>"+data[key]+"</td></tr>";
 	}
 	
-	output+="</table>"
+	output+="</table>"*/
+	output="<pre>";
+	output+=JSON.stringify(data, null, 2);
+	output+="</pre>";
+	//console.log(output);
 	delm.innerHTML=output;
 }
 
