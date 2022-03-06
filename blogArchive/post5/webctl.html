@@ -1,0 +1,41 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="/ctlstyle.css" type="text/css">
+<script src="js/webctl.js"></script>
+<script>window.onload=monitorSensors;</script>
+<title>Pi Rover Web Control</title>
+</head>
+
+<body>
+	
+<div id="panelContent">
+  <div id="controlPanel" class="ctlpanel">
+    <button id="b_up" onClick="webctlButtonPress('up')"><img src="icons/arrow_48x48_blue.png"></button>
+    <button id="b_left" onClick="webctlButtonPress('left')"><img src="icons/arrow_48x48_blue.png"></button>
+    <button id="b_stop" onClick="webctlButtonPress('stop')"><img src="icons/stop_48x48.png"></button>
+    <button id="b_right" onClick="webctlButtonPress('right')"><img src="icons/arrow_48x48_blue.png"></button>
+    <button id="b_down" onClick="webctlButtonPress('down')"><img src="icons/arrow_48x48_blue.png"></button>
+    <button id="b_acw" onClick="webctlButtonPress('acw')"><img src="icons/acw_48x48.png"></button>
+    <button id="b_cw" onClick="webctlButtonPress('cw')"><img src="icons/cw_48x48.png"></button>
+    <button id="b_tup" onClick="webctlButtonPress('tup')"><img src="icons/tiltUp_48x48.png"></button>
+    <button id="b_tdown" onClick="webctlButtonPress('tdown')"><img src="icons/tiltDown_48x48.png"></button>
+    <button id="b_panl" onClick="webctlButtonPress('panl')"><img src="icons/panLeft_48x48.png"></button>
+    <button id="b_panr" onClick="webctlButtonPress('panr')"><img src="icons/panRight_48x48.png"></button>
+    <button id="b_pcent" onClick="webctlButtonPress('pcent')"><img src="icons/panCent_48x48.png"></button>
+  </div>
+
+  <div id="streamer" class="ctlpanel">
+
+    <div id="stream">
+      <img src="http://pirover.local:8080/?action=stream">
+    </div>  
+
+  </div>
+
+  <div id="dataout" class="ctlpanel"></div>
+</div>
+
+</body>
+
+</html>
