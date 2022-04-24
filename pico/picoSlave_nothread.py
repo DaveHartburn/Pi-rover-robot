@@ -23,7 +23,9 @@ import json
 debugOut = True       # Use dprint(str) rather than print(str), set to false to prevent print output
 
 activate = False       # True if actively checking sensors and sending serial data
-sendFreq = 5000        # How often to send data
+sendFreq = 250         # How often to send data in ms
+sensorFreq = 250       # How often to check sensors in ms
+sonicTimeout = 50000    # Timeout in ns
 
 hwData={}             # Build dictionary of hardware data to return current status to Pi
 hwData["msg"]=""      # Used to send messages back
@@ -34,8 +36,19 @@ servos=[ [2,25,150,-14],    # Pan servo (index 0)
          [3,30,120,0] ]   # Tilt servo (index 1)
 servoPWM=[]          # Array of PWM objects for each servo
 
+# List of sonic sensors. Name, triger pin, echo
+
+sonicList= [
+    ["front", Pin(4, Pin.OUT), Pin(5, Pin.IN)],
+    ["left", Pin(6, Pin.OUT), Pin(7, Pin.IN)],
+    ["right", Pin(8, Pin.OUT), Pin(9, Pin.IN)],
+    ["rear", Pin(15, Pin.OUT), Pin(14, Pin.IN)]
+    ]
+
 # Internal timers
 nextSend = 0         # Time of next data send
+nextSensor = 0       # Next time to check the sensors
+
 
 # Internal pin for activity
 led=Pin(25, Pin.OUT)
@@ -66,10 +79,11 @@ def sendData(str):
 def sendhw():
     # Send the hwData array as JSON object
     jsonOut=json.dumps(hwData)
-    dprint(jsonOut)            
+    #dprint(jsonOut)            
     sendData(jsonOut)
      
 def receiveData():
+    toReturn=[]
     dataIn = ""
     
     while uart.any():
@@ -77,16 +91,26 @@ def receiveData():
         # has completed sending. This loop will continue until the incoming
         # data has completed. On exception it will send what string it has
         # so far
+        # However if the sender sends data too quickly, then all commands
+        # merge into one, construct array "toReturn" and send a list if needed
         rawIn = uart.readline()
-        #print(rawIn)
+        # print(rawIn)
+        # print("".join("%02x " % b for b in rawIn))
+        
         # Raw data is as a byte stream. Convert
         # Need to use a try/except as control characters may cause an issue
         try:
-            dataIn += str(rawIn.decode('utf-8').strip())
+            dataIn += str(rawIn.decode('utf-8'))
             #print("Incoming :", dataIn)
         except:
             pass
-    return dataIn
+    
+    # Split commands on new line
+    toReturn=dataIn.split('\n')
+    
+    #print("Array of commands")
+    #print(toReturn)
+    return toReturn
 
 # Servo functions
 def setServoCycle (obj, pos):
@@ -120,6 +144,55 @@ def changeServoAngle (s, a):
     if(s<len(servoPWM)):
         n=hwData["servos"][s]+a
         setServoAngle(s,n)
+
+# Ultrasonic functions
+def readSonic(trig, echo):
+    # Read the distance from an ultrasonic sensor,
+    # return in cm. -1 = error
+    
+    # Any reading above this value is considered an error
+    timeOut=time.ticks_us()+sonicTimeout
+    
+    callTime=time.ticks_us()
+    startTime=callTime    # Set a default value time. We can sometimes get
+    stopTime=callTime     # Get a variable not set error
+    
+    trig.low()
+    time.sleep_us(2)   
+    trig.high()
+    time.sleep_us(5)
+    trig.low()
+    
+    # Save start time
+    #print("Waiting for echo to go to zero")
+    while (echo.value()==0 and time.ticks_us()<timeOut):
+        startTime = time.ticks_us()
+    
+    # Save end time
+    #print("Waiting for echo to go to one")
+    while (echo.value()==1 and time.ticks_us()<timeOut):
+        stopTime = time.ticks_us()
+      
+    #print("Echo returned / time out")
+    
+    if(time.ticks_us()>timeOut):
+        # Time out error
+        dist=-1
+    else:
+        elTime=stopTime-startTime
+        dist=round((elTime*0.0343)/2,2)
+
+    return dist
+# End of readSonic
+
+def readAllSonics():
+    i=0
+    for s in sonicList:
+        d = readSonic(s[1], s[2])
+        #dprint("Sonic {}, distance={} cm".format(s[0],d))
+        hwData["sonics"][i][1]=d
+        i+=1
+    #print(hwData)
     
 # ******** Main code ******************
 
@@ -148,69 +221,94 @@ else:
         setServoAngle(i, 90);
         i+=1
 
+# Initialise ultrasonic sensors if present
+if(sonicList==[]):
+    dprint("No ultrasonics defined")
+else:
+    # Sonics present, create array for distance readings in hwData
+    hwData["sonics"]=[]
+    for s in sonicList:
+        dprint("Init ultrasonic "+s[0])
+        hwData["sonics"].append([s[0], -1])
+        
+dprint("Initial hwData:")
+dprint(hwData)
+
 # Main loop
 while True:
     if uart.any():
-        msg=receiveData()
-        dprint("Message received: \"{}\"".format(msg))
-        # Break the message into CSV
-        csvin=msg.split(',')
-        # Take the command off the front
-        cmd=csvin.pop(0)
-        dprint("Received command "+cmd)
-        #dprint(csvin)
+        # Data present
+        incData=receiveData()
+        dprint("Data received: ")
+        dprint(incData)
         
-        # Try and except deals with list index errors due
-        # to incorrect arguments
-        if(cmd=="quit"):
-            break
-        elif(cmd=="ping"):
-            #sendData("beep")
-            hwData["msg"]="beep-"+str(time.time())
-        elif(cmd=="panangle"):
-            try:
-                setServoAngle(0,int(csvin[0]))
-            except:
-                pass
-        elif(cmd=="panleft"):
-            try:
-                changeServoAngle(0,int(csvin[0]))
-            except:
-                pass
-        elif(cmd=="tiltangle"):
-            try:
-                setServoAngle(1,int(csvin[0]))
-            except:
-                pass
-        elif(cmd=="tiltup"):
-            try:
-                changeServoAngle(1,-int(csvin[0]))
-            except:
-                pass
-        elif(cmd=="servoangle"):
-            try:
-                setServoAngle(int(csvin[0]),int(csvin[1]))
-            except:
-                pass
-        elif(cmd=="servoleft"):
-            try:
-                changeServoAngle(int(csvin[0]),int(csvin[1]))
-            except:
-                pass
-        elif(cmd=="datarequest"):
-           sendhw()
-        elif(cmd=="activate"):
-            activate=True
-            nextSend=0
-        elif(cmd=="deactivate"):
-            activate=False
+        # Examin individual messages
+        for msg in incData:
+            # Break the message into CSV
+            csvin=msg.split(',')
+            # Take the command off the front
+            cmd=csvin.pop(0)
+            dprint("Received command "+cmd)
+            #dprint(csvin)
+            
+            # Try and except deals with list index errors due
+            # to incorrect arguments
+            if(cmd=="quit"):
+                break
+            elif(cmd=="ping"):
+                #sendData("beep")
+                hwData["msg"]="beep-"+str(time.time())
+            elif(cmd=="panangle"):
+                try:
+                    setServoAngle(0,int(csvin[0]))
+                except:
+                    pass
+            elif(cmd=="panleft"):
+                try:
+                    changeServoAngle(0,int(csvin[0]))
+                except:
+                    pass
+            elif(cmd=="tiltangle"):
+                try:
+                    setServoAngle(1,int(csvin[0]))
+                except:
+                    pass
+            elif(cmd=="tiltup"):
+                try:
+                    changeServoAngle(1,-int(csvin[0]))
+                except:
+                    pass
+            elif(cmd=="servoangle"):
+                try:
+                    setServoAngle(int(csvin[0]),int(csvin[1]))
+                except:
+                    pass
+            elif(cmd=="servoleft"):
+                try:
+                    changeServoAngle(int(csvin[0]),int(csvin[1]))
+                except:
+                    pass
+            elif(cmd=="datarequest"):
+               sendhw()
+            elif(cmd=="activate"):
+                activate=True
+                nextSend=0
+            elif(cmd=="deactivate"):
+                activate=False
+        # End of for msg in incData
     # End of if uart.any()
     
-    # Do we need to send data?
+        
+    # Do we need to check sensors and send data?
     if(activate):
-        # Yes, is it time
+        # Are sensor readings required
+        if(nextSensor<time.ticks_ms()):
+            readAllSonics()
+            nextSensor=time.ticks_ms()+sensorFreq
+            
+        # Time to send data
         if(nextSend<time.ticks_ms()):
-            dprint("Sending data")
+            #dprint("Sending data")
             sendhw()
             nextSend=time.ticks_ms()+sendFreq
             

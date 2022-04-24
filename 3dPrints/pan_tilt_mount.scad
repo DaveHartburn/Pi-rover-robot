@@ -10,9 +10,9 @@ $fn=256;
 
 // What to show
 showBasePlate=1;
-showBasePlateUpper=0;
-showLowerBody=0;        // There is no upper body!
-showCamArm=0;
+showBasePlateUpper=1;
+showLowerBody=1;        // There is no upper body!
+showCamArm=1;
 
 // Hardware
 showLowerServo=0;
