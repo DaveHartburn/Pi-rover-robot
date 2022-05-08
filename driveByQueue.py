@@ -9,6 +9,7 @@
 import time
 import zmq
 import json
+import sys
 
 # Include local pirover library
 from piroverlib import piRover
@@ -32,6 +33,14 @@ pirover=piRover(left=leftPins, right=rightPins, pico=True)
 serverRunning=True
 rdata={}			# Track responses
 rdataJson=""
+
+# Check for command line arguments
+# Initially can only send a '-a' to activate pico on start
+if(len(sys.argv) > 1):
+	if(sys.argv[1]=="-a"):
+		print("Activating pico on start")
+		pirover.picoActivate()
+# End of argument processing
 
 # Loop for input
 while serverRunning:

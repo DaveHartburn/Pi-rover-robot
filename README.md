@@ -19,11 +19,11 @@ The heart of most Python scripts is piroverlib.py. This contains two classes, pi
 |  * name="string"	| Give your robot a name |
 |  * left=[a,b]		| List of a and b pins for left motor(s) |
 |  * right=[a,b]	|	List of a and b pins for right motor(s) |
-|  *	load=1		|	Return load values with data |
-|  *	wifi=1		|	Return wifi RSSI and noise with data |
-|  * pantilt=[p,t] |	Pan tilt camera connected to a PCA9685, which servo slots are they in |
-|  * sonics=[[t,e],[t,e]] | Define HC-SR04 ultrasonic sensors in pairs of trigger, echo |
+|  * load=1		|	Return load values with data |
+|  * wifi=1		|	Return wifi RSSI and noise with data |
 |  * button=p       | Defines a pushbutton attached to pin p |
+|  * pico=True      | Use a pico slave for functions such as ultrasonic and pan/tilt mount |
+|  * magneto=True	| Use a LSM303AGR magnetometer for heading info |
 | stop() | Instantly stops both motors |
 | fwFull(sp) | Sets both motors to full speed. sp positive for forward, sp negative for backwards. Zero will perform a stop |
 | fwSpeed(sp) | Sets both motors to the speed sp |
@@ -40,7 +40,11 @@ The heart of most Python scripts is piroverlib.py. This contains two classes, pi
 | panCentre(a) | Sets the camera pan and tilt to centre (default positions) |
 | tiltAngle(a) | Sets the tilt angle to a |
 | tiltUp(a) | Tilts the camera up by angle a (down if a is negative) |
-| getButton() | Returns the state of the pushbutton (0=pressed)
+| getButton() | Returns the state of the pushbutton (0=pressed) |
+| LSM303AGR Functions: | |
+| magNormalise(m) | Internal function to normalise to calibrated values |
+| getHeading([a, i]) | Get heading and chassis tilt, optional a attempts with interval i |
+| turnToHeading(h, [s, f]) | Turn to a heading h, with speed s and force direction (1,-1) optional |
 
 ### pwmMotor class
 

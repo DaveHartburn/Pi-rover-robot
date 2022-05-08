@@ -10,6 +10,11 @@ import serial
 from threading import Thread
 import json
 
+# Required for LSM303AGR
+import board
+import adafruit_lsm303_accel
+import adafruit_lis2mdl
+
 # Use BCM settings, e.g. GPIO19
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
@@ -112,6 +117,7 @@ class piRover():
 	sport=None		# Set as serial port device
 	picoTimeout=3000	# Timeout serial comms after 3 seconds
 	activated=False	# False if pico slave is not activated
+	magneto=False	# No magnetomoeter
 		
 	# Track object status as a python dictionary, which is returned after every
 	# function call. As other sensors are added, they can be added to the dictionary.
@@ -131,7 +137,6 @@ class piRover():
 		#   right=[a,b]		List of a and b pins for right motor(s)
 		#	load=1			Return load values with data
 		#	wifi=1			Return wifi RSSI and noise with data
-		#	pantilt=[p,t]	Pan tilt camera connected to a PCA9685, which servo slots are they in
 		
 		# Process input
 		for k,v in kwargs.items():
@@ -161,7 +166,10 @@ class piRover():
 				#print("Init serial port")
 				self.sport = serial.Serial("/dev/ttyS0", 115200)
 				#print(self.sport)
-				
+			elif(k=="magneto"):
+				# Use a LSM303AGR magnetometer for heading info, connected via I2C
+				self.magneto=True
+
 		# End of argument processing / setup		
 				
 		print("Hello world, I am "+self.name)
@@ -178,6 +186,23 @@ class piRover():
 			# Init right motor
 			self.right=pwmMotor(self.rightPins[0], self.rightPins[1])
 			
+		# Set up magnetometer
+		if(self.magneto==True):
+			print("Setting up magnetometer")
+			# Init I2C
+			self.i2c = board.I2C()
+			self.accel = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
+			self.magsens = adafruit_lis2mdl.LIS2MDL(self.i2c)
+			# Run lis2mdl_calibrate for hardiron_calibration array
+			self.hardiron_calibration = [[-54.75, 43.199999999999996], [-77.55, 10.35], [-119.1, 16.349999999999998]]
+			# Set up return data
+			self.rdata["magneto"]={}
+			self.rdata["magneto"]["raw"]=[]
+			self.rdata["magneto"]["heading"]=-255		# -255 is an error state
+			self.rdata["magneto"]["accelraw"]=[]
+			self.rdata["magneto"]["chassisTilt"]=-255
+	# End of init
+
 	def getdata(self):
 		# Return the data array
 		return self.rdata
@@ -312,6 +337,8 @@ class piRover():
 	# Serial functions
 	def sendToPico(self, msg):
 		# Send over serial port to pico
+		# Terminate msg with new line
+		msg+='\n'
 		data=msg.encode('UTF-8')
 		self.sport.write(data)
 		
@@ -374,11 +401,11 @@ class piRover():
 						# Add timestamp
 						jsonIn["timestamp"]=time.time()
 						self.rdata["pico"]=jsonIn
-						print("Whole JSON structure");
-						print(self.rdata)
-						print("Left speed", self.rdata["leftSpeed"]);
-						print("Pico ", self.rdata["pico"]);
-						print("Pico timestamp", self.rdata["pico"]["timestamp"]);
+						#print("Whole JSON structure");
+						#print(self.rdata)
+						#print("Left speed", self.rdata["leftSpeed"]);
+						#print("Pico ", self.rdata["pico"]);
+						#print("Pico timestamp", self.rdata["pico"]["timestamp"]);
 					except:
 						print("Error decoding JSON");
 					
@@ -432,6 +459,130 @@ class piRover():
 		
 	def tiltUp(self, a):
 		self.picoCmd("tiltup",a)
+		return self.rdata
+
+	# *** LSM303AGR, accelerometer and magnetometer functions ****
+	def magNormalize(self, _magvals):
+		# Normalise heading readings
+		ret = [0, 0, 0]
+		for i, axis in enumerate(_magvals):
+			minv, maxv = self.hardiron_calibration[i]
+			axis = min(max(minv, axis), maxv)  # keep within min/max calibration
+			ret[i] = (axis - minv) * 200 / (maxv - minv) + -100
+		return ret
+
+	def getHeading(self, attempts=1, interval=0.01):
+		# Get magnetometer heading. -255 is an error
+		# Also returns tilt, via rdata settings
+		# By default will just try once, but can have multiple attempts
+		# for greater accuracy
+		totalH=0
+		for i in range(1,attempts+1):
+			#print("Getting heading, attempt", i)
+			magvals = self.magsens.magnetic
+			normvals = self.magNormalize(magvals)
+			#print("magnetometer: %s -> %s" % (magvals, normvals))
+
+			# we will only use X and Y for the compass calculations, so hold it level!
+			compass_heading = int(math.atan2(normvals[1], normvals[0]) * 180.0 / -math.pi)
+			# compass_heading is between -180 and +180 since atan2 returns -pi to +pi
+			# this translates it to be between 0 and 360
+			# Minus added before math.pi as original code had east as 270 and west as 90.
+			compass_heading += 180
+
+			#print("Calibrated heading: {}".format(compass_heading))			
+			totalH+=compass_heading
+			
+			# Don't sleep on last attempt
+			if(i!=attempts):
+				time.sleep(interval)
+		
+		# Compute average
+		h=totalH/attempts
+		self.rdata["magneto"]["raw"]=normvals
+		self.rdata["magneto"]["heading"]=round(h,1)
+			
+		return self.rdata
+
+	def turnToHeading(self, heading, speed=30, fdir=0):
+		# Turn to the heading, 'heading' using default or specified turning speed
+		# By default it will turn the shortest direction, but it can be forced 
+		# with fdir=1 for clockwise or -1 for anti-clockwise
+		#print("Turning to heading {}, speed {} and force direction status {}".format(heading, speed, fdir))
+		self.getHeading()
+		initHead=self.rdata["magneto"]["heading"]
+		# Is the direction forced?
+		if(fdir!=0):
+			# Yes
+			direct=fdir
+		else:
+			# No, calculate bearing difference
+			headDiff=((((initHead-heading)%360)+540)%360)-180
+
+			#print("Change in heading", headDiff)
+			if(headDiff<0):
+				direct=1
+			else:
+				direct=-1
+		#print("Turning to {} from {} (difference {}) in direction {} (1=CW)".format(heading,initHead,headDiff,direct))
+		turnSpeed=speed*direct		# Will turn negative if -1
+		#time.sleep(2)
+
+		# Start spin
+		self.spin(turnSpeed)
+		while(self.stillMagTurning(self.rdata["magneto"]["heading"],direct,heading)):
+			self.getHeading()
+			# Be nice
+			time.sleep(0.001)
+		self.stop()
+		
+		return self.rdata
+		# *** End of LSM303AGR functions
+	
+	def stillMagTurning(self, now, direct, targ):
+		# Return true if we should still turn. There are a number of different scenarios
+		# Turning clockwise?
+		if(direct==1):
+			# Turning clockwise to a greater angle
+			# If we are on a heading over 180 and the target is less than 180, keep turning
+			if(now>180 and targ<180):
+				return True
+			# Not crossing the 0/360 line, keep turning if needed
+			if(now<targ):
+				return True
+		else:
+			# Turning anticlockwise to a smaller angle
+			# If we are on a heading less than 180 and the target is over 180, keep turning
+			if(now<180 and targ>180):
+				return True
+			# Not crossing the 0/360 line, keep turning if needed
+			if(now>targ):
+				return True
+		return False
+		
+	def turnByHeading(self, ang, speed=30):
+		# Turn by speficied angle
+		self.getHeading()
+		h=self.rdata["magneto"]["heading"]+ang
+		if(h>360):
+			h-=360
+		if(h<0):
+			h+=360
+		self.turnToHeading(h, speed=speed)
+		
+	def getAccel(self):
+		# Return data from the accelerometer, including calculations for tilt (pitch)
+		accvals = self.accel.acceleration
+		ax = accvals[0]
+		ay = accvals[1]
+		az = accvals[2]
+	
+		# Perform calculations
+		tilt = math.atan2((-ax), math.sqrt(ay*ay+az*az)) * 180 / math.pi
+		
+		# Set into array
+		self.rdata["magneto"]["accelraw"]=accvals
+		self.rdata["magneto"]["chassisTilt"]=tilt
 		return self.rdata
 		
 # End of class piRover

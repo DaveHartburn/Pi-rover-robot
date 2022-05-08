@@ -26,7 +26,7 @@ picoData=[]
 # Define constants
 fwSpeed = 50			# Percent forward speed
 bwSpeed = 30			# Percent backwards speed (is negated in function, don't make negative here!)
-turnSpeed = 50			# Spin rate
+turnAngle = 50			# Spin rate
 fwMinDist = 20			# cm distance to stop when going forward
 bwMinDist = 15			# cm distance to stop when going backwards
 lMinDist = 15			# cm distance to veer away from left side
@@ -34,7 +34,8 @@ rMinDist = 15			# cm distance to veer away from right side
 sonicRead = 0.2			# Interval to wait between sonic sensor readings
 
 backupTime = 2			# Number of seconds to run backwards for
-turnTime = 1			# Number of seconds to turn for
+turnAngle = 45			# Angle to turn
+turnSpeed = 80			# Speed to turn
 quitDist = 4			# Quit if both sensors read less than this distance
 panLook = 45			# Amount to look left and right
 
@@ -109,29 +110,26 @@ def turn_to_clearest(l, r):
 			return
 		if(r>rMinDist):
 			print("No left reading, but right is clear, turning right")
-			pirover.spin(turnSpeed)
+			pirover.turnByHeading(turnAngle, speed=turnSpeed)
 		else:
 			print("No left reading, and right is not clear, try turning left")
-			pirover.spin(-turnSpeed)
+			pirover.turnByHeading(-turnAngle, speed=turnSpeed)
 	elif(r==-1):
 		if(l>lMinDist):
 			print("No right reading, and left is clear, turning left")
-			pirover.spin(-turnSpeed)
+			pirover.turnByHeading(-turnAngle, speed=turnSpeed)
 		else:
 			print("No right reading, and left is not clear, try turning right")
-			pirover.spin(turnSpeed)
+			pirover.turnByHeading(turnAngle, speed=turnSpeed)
 	elif(l>=r):
 		# More distance to left, spin left (anti-clockwise)
 		print("Left is clear, turning left")
-		pirover.spin(-turnSpeed)
+		pirover.turnByHeading(-turnAngle, speed=turnSpeed)
 	else:
 		# More distance to right, spin right (clockwise)
 		print("Right is clear, turning right")
-		pirover.spin(turnSpeed)
+		pirover.turnByHeading(turnAngle, speed=turnSpeed)
 
-	time.sleep(turnTime)
-	pirover.stop()
-	print("Turn stopped")
 	time.sleep(debugDelay)
 #  End of turn_to_clearest
 
@@ -177,9 +175,9 @@ def testPico():
 # ********* End of functions ***********
 
 
-print("AutoDrive 1 started....")
+print("AutoDrive 2 started, using magnetometer and accelerometer....")
 #pirover=piRover(left=leftPins, right=rightPins)
-pirover=piRover(left=leftPins, right=rightPins, pico=True)
+pirover=piRover(left=leftPins, right=rightPins, pico=True, magneto=True)
 
 # Set up button and call back. Not using the button as part of the pirover library, so
 # that we can define the emergency stop call back here
@@ -207,6 +205,13 @@ while runLoop:
 	picoData=pirover.getSensorData()
 	#print(picoData)
 	
+	# Get the accelerometer data
+	rdata = pirover.getAccel()
+	if(rdata["magneto"]["chassisTilt"]>15):
+		print(" ** We are tipping up, angle={:0.1f}".format(rdata["magneto"]["chassisTilt"]))
+		backup()
+		pirover.fwSpeed(drSpeed)
+		
 	# Pull out data to make references easier.
 	# It is possible the data has not been populated yet, use defaults/null values
 	
@@ -223,7 +228,7 @@ while runLoop:
 		rearS=-1
 		errorStopped=True
 	
-	print(frontS, leftS, rightS)
+	#print(frontS, leftS, rightS)
 	
 	# If no reading from front, stop
 	if(frontS<0):
@@ -268,37 +273,7 @@ while runLoop:
 	time.sleep(0.05)
 # End of main loop
 	
-# Mask out old stuff
-runOld=False
-if runOld:
-	# Read ultrasonic sensors
-	d = pirover.getSonic()
-	print(d)
-	if(d[0]<quitDist and d[1]<quitDist):
-		runLoop = False
-		print("Quitting, both sensors at minimum distance. Stuck?!")
 
-	# Check running direction
-	if(drSpeed>0):
-		# Running forward
-		if(d[0]<fwMinDist):
-			print("Reached minimum front distance")
-			pirover.stop()
-			ab = lookAbout()
-			print("Distances read [left, right] are: ",ab)
-			# If too close to both, back up
-			if(ab[0]<fwMinDist and ab[1]<fwMinDist):
-				print("Too close, backing up")
-				backup()
-				print("Look again")
-				ab = lookAbout()
-				turn_to_clearest(ab)
-			else:
-				turn_to_clearest(ab)
-			# Start moving again
-			pirover.fwSpeed(drSpeed)
-	
-	time.sleep(sonicRead)
 # End of main loop
 pirover.stop()
 pirover.picoDeactivate()
